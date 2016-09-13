@@ -1,2 +1,2 @@
 # grantedbyme-nodejs-example
-GrantedByMe Node.js SDK Examples
+GrantedByMe Node.js SDK examples

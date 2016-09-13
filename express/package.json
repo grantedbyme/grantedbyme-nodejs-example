@@ -1,0 +1,17 @@
+{
+  "name": "grantedbyme-nodejs-sdk-express-example",
+  "version": "1.0.6",
+  "description": "GrantedByMe Node.js SDK Express Example",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "GrantedByMe",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "grantedbyme": "git+https://github.com/grantedbyme/grantedbyme-nodejs-sdk.git",
+    "request": "^2.74.0"
+  }
+}
