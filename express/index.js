@@ -11,24 +11,37 @@ const gbm = new grantedbyme({
     'server_key_path': './../../data/server_key.pem'
 });
 
-// load and init express.js
+var fs = require('fs');
+var path = require('path');
+var util = require('util');
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
-// app.set('view engine', 'pug');
 app.use(express.static('static'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 
-function login_user(grantor) {
+console.log(path.join(__dirname, 'logs/app.log'));
+var log_stream = fs.createWriteStream(path.join(__dirname, 'logs/app.log'), {flags: 'a'});
+var log_stdout = process.stdout;
+
+console.log = function(d) { //
+    log_stream.write(util.format(d) + '\n');
+    log_stdout.write(util.format(d) + '\n');
+};
+
+function login_user(authenticator_secret) {
+    console.log('login_user');
     // TODO: implement
 }
 
-function link_user(grantor) {
+function link_user(authenticator_secret) {
+    console.log('link_user');
     // TODO: implement
 }
 
 function register_user(profile_data) {
+    console.log('register_user');
     const email = profile_data.email;
     const first_name = profile_data.first_name;
     const last_name = profile_data.last_name;
@@ -36,32 +49,33 @@ function register_user(profile_data) {
 }
 
 app.get('/', function (req, res) {
-    res.redirect('index.html');
+    // TODO: check logged in user and redirect to index.html
+    res.redirect('login.html');
 });
 
 app.all(/(.*)\/logout/, function (req, res) {
     // TODO: logout user session
-    res.redirect('index.html');
+    res.redirect('login.html');
 });
 
 app.all(/(.*)\/ajax/, function (req, res) {
     if (req.xhr) {
-        console.log(req.body);
+        console.log('ajax request', req.body);
         if (req.body.operation === 'getSessionState') {
-            gbm.get_token_state(req.body.token, function (error, response, body) {
+            gbm.get_challenge_state(req.body.challenge, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
                 console.log(body);
                 if (body.status === 3) {
-                    login_user(body.grantor);
-                    body.grantor = null;
-                    delete body.grantor;
+                    login_user(body.authenticator_secret);
+                    body.authenticator_secret = null;
+                    delete body.authenticator_secret;
                 }
                 res.json(body);
             }, req.ip, null);
         } else if (req.body.operation === 'getSessionToken') {
-            gbm.get_session_token(function (error, response, body) {
+            gbm.get_challenge(gbm.CHALLENGE_SESSION, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
@@ -69,23 +83,23 @@ app.all(/(.*)\/ajax/, function (req, res) {
                 res.json(body);
             }, req.ip, null);
         } else if (req.body.operation === 'getAccountState') {
-            gbm.get_token_state(req.body.token, function (error, response, body) {
+            gbm.get_challenge_state(req.body.challenge, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
                 console.log(body);
                 if (body.status === 3) {
-                    const grantor = gbm.crypto.random_string(128);
-                    gbm.link_account(req.body.token, grantor, function (link_error, link_response, link_body) {
-                        link_user(grantor);
+                    const authenticator_secret = gbm.generate_authenticator_secret();
+                    gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
+                        link_user(authenticator_secret);
                         res.json(body);
-                    }, req.ip, null);
+                    });
                 } else {
                     res.json(body);
                 }
             }, req.ip, null);
         } else if (req.body.operation === 'getAccountToken') {
-            gbm.get_account_token(function (error, response, body) {
+            gbm.get_challenge(gbm.CHALLENGE_ACCOUNT, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
@@ -93,23 +107,23 @@ app.all(/(.*)\/ajax/, function (req, res) {
                 res.json(body);
             }, req.ip, null);
         } else if (req.body.operation === 'getRegisterState') {
-            gbm.get_token_state(req.body.token, function (error, response, body) {
+            gbm.get_challenge_state(req.body.challenge, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
                 console.log(body);
                 if (body.status === 3) {
-                    const grantor = gbm.crypto.random_string(128);
-                    gbm.link_account(req.body.token, grantor, function (link_error, link_response, link_body) {
+                    const authenticator_secret = gbm.generate_authenticator_secret();
+                    gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
                         register_user(body.data);
                         res.json(body);
-                    }, req.ip, null);
+                    });
                 } else {
                     res.json(body);
                 }
             }, req.ip, null);
         } else if (req.body.operation === 'getRegisterToken') {
-            gbm.get_register_token(function (error, response, body) {
+            gbm.get_challenge(gbm.CHALLENGE_REGISTER, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
@@ -123,33 +137,33 @@ app.all(/(.*)\/ajax/, function (req, res) {
 });
 
 app.post(/(.*)\/callback/, function (req, res) {
-    if(req.body.signature && req.body.payload && req.body.message) {
+    var result = {success: false};
+    if(req.body.signature && req.body.payload) {
         const cipher_request = {
-            'signature': request.body.signature,
-            'payload': request.body.payload,
-            'message': request.body.message
+            'signature': req.body.signature,
+            'payload': req.body.payload
         };
+        if(req.body.message) {
+            cipher_request['message'] = req.body.message;
+        }
         const plain_request = gbm.crypto.decrypt(cipher_request);
+        console.log('callback request', plain_request);
         if(plain_request && plain_request.operation) {
+            var token;
             if(plain_request.operation === 'ping') {
-                // pass
-            } else if(plain_request.operation === 'deactivate_service') {
-                // TODO: implement
-            } else if(plain_request.operation === 'rekey_service') {
-                // TODO: implement
-            } else if(plain_request.operation === 'deactivate_account') {
-                const token = plain_request.token; // sha512(grantor) hash
+                result = {success: true};
+            } else if(plain_request.operation === 'unlink_account') {
                 // TODO: implement
             } else if(plain_request.operation === 'rekey_account') {
-                const token = plain_request.token; // sha512(grantor) hash
                 // TODO: implement
             } else {
-                res.json({success: false});
+                console.log('callback operation not handled:', plain_request.operation);
             }
-            res.json({success: true});
+            result = gbm.crypto.encrypt(result);
         }
     }
-    res.json({success: false});
+    console.log('callback response', result);
+    res.json(result);
 });
 
 app.listen(5006, function () {
