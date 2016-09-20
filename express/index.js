@@ -75,7 +75,7 @@ app.all(/(.*)\/ajax/, function (req, res) {
                 res.json(body);
             }, req.ip, null);
         } else if (req.body.operation === 'getSessionToken') {
-            gbm.get_challenge(gbm.CHALLENGE_SESSION, function (error, response, body) {
+            gbm.get_challenge(gbm.CHALLENGE_AUTHENTICATE, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
@@ -99,7 +99,7 @@ app.all(/(.*)\/ajax/, function (req, res) {
                 }
             }, req.ip, null);
         } else if (req.body.operation === 'getAccountToken') {
-            gbm.get_challenge(gbm.CHALLENGE_ACCOUNT, function (error, response, body) {
+            gbm.get_challenge(gbm.CHALLENGE_AUTHORIZE, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
@@ -123,7 +123,7 @@ app.all(/(.*)\/ajax/, function (req, res) {
                 }
             }, req.ip, null);
         } else if (req.body.operation === 'getRegisterToken') {
-            gbm.get_challenge(gbm.CHALLENGE_REGISTER, function (error, response, body) {
+            gbm.get_challenge(gbm.CHALLENGE_PROFILE, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
