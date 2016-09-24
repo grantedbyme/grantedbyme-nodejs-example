@@ -153,9 +153,17 @@ app.post(/(.*)\/callback/, function (req, res) {
             if(plain_request.operation === 'ping') {
                 result = {success: true};
             } else if(plain_request.operation === 'unlink_account') {
-                // TODO: implement
+                if(plain_request.authenticator_secret_hash) {
+                    // TODO: implement
+                }
             } else if(plain_request.operation === 'rekey_account') {
-                // TODO: implement
+                if(plain_request.authenticator_secret_hash) {
+                    // TODO: implement
+                }
+            } else if(plain_request.operation === 'revoke_challenge') {
+                if(plain_request.challenge) {
+                    // TODO: implement
+                }
             } else {
                 console.log('callback operation not handled:', plain_request.operation);
             }
