@@ -61,73 +61,39 @@ app.all(/(.*)\/logout/, function (req, res) {
 app.all(/(.*)\/ajax/, function (req, res) {
     if (req.xhr) {
         console.log('ajax request', req.body);
-        if (req.body.operation === 'getSessionState') {
-            gbm.get_challenge_state(req.body.challenge, function (error, response, body) {
-                if (error || !body) {
-                    res.json({success: false});
-                }
-                console.log(body);
-                if (body.status === 3) {
-                    login_user(body.authenticator_secret);
-                    body.authenticator_secret = null;
-                    delete body.authenticator_secret;
-                }
-                res.json(body);
-            }, req.ip, null);
-        } else if (req.body.operation === 'getSessionToken') {
-            gbm.get_challenge(gbm.CHALLENGE_AUTHENTICATE, function (error, response, body) {
+        if (req.body.operation === 'getChallenge') {
+            gbm.get_challenge(parseInt(req.body.challenge_type), function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
                 console.log(body);
                 res.json(body);
             }, req.ip, null);
-        } else if (req.body.operation === 'getAccountState') {
+        } else if (req.body.operation === 'getChallengeState') {
             gbm.get_challenge_state(req.body.challenge, function (error, response, body) {
                 if (error || !body) {
                     res.json({success: false});
                 }
                 console.log(body);
                 if (body.status === 3) {
-                    const authenticator_secret = gbm.generate_authenticator_secret();
-                    gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
-                        link_user(authenticator_secret);
-                        res.json(body);
-                    });
-                } else {
-                    res.json(body);
+                    if(parseInt(req.body.challenge_type) === gbm.CHALLENGE_AUTHORIZE) {
+                        const authenticator_secret = gbm.generate_authenticator_secret();
+                        gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
+                            link_user(authenticator_secret);
+                            res.json(body);
+                        });
+                    } else if(parseInt(req.body.challenge_type) === gbm.CHALLENGE_AUTHENTICATE) {
+                        login_user(body.authenticator_secret);
+                        body.authenticator_secret = null;
+                        delete body.authenticator_secret;
+                    } else if(parseInt(req.body.challenge_type) === gbm.CHALLENGE_PROFILE) {
+                        const authenticator_secret = gbm.generate_authenticator_secret();
+                        gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
+                            register_user(body.data);
+                            res.json(body);
+                        });
+                    }
                 }
-            }, req.ip, null);
-        } else if (req.body.operation === 'getAccountToken') {
-            gbm.get_challenge(gbm.CHALLENGE_AUTHORIZE, function (error, response, body) {
-                if (error || !body) {
-                    res.json({success: false});
-                }
-                console.log(body);
-                res.json(body);
-            }, req.ip, null);
-        } else if (req.body.operation === 'getRegisterState') {
-            gbm.get_challenge_state(req.body.challenge, function (error, response, body) {
-                if (error || !body) {
-                    res.json({success: false});
-                }
-                console.log(body);
-                if (body.status === 3) {
-                    const authenticator_secret = gbm.generate_authenticator_secret();
-                    gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
-                        register_user(body.data);
-                        res.json(body);
-                    });
-                } else {
-                    res.json(body);
-                }
-            }, req.ip, null);
-        } else if (req.body.operation === 'getRegisterToken') {
-            gbm.get_challenge(gbm.CHALLENGE_PROFILE, function (error, response, body) {
-                if (error || !body) {
-                    res.json({success: false});
-                }
-                console.log(body);
                 res.json(body);
             }, req.ip, null);
         }
