@@ -87,8 +87,7 @@ app.all(/(.*)\/ajax/, function (req, res) {
                         body.authenticator_secret = null;
                         delete body.authenticator_secret;
                     } else if(parseInt(req.body.challenge_type) === gbm.CHALLENGE_PROFILE) {
-                        const authenticator_secret = gbm.generate_authenticator_secret();
-                        gbm.link_account(req.body.challenge, authenticator_secret, function (link_error, link_response, link_body) {
+                        gbm.link_account(req.body.challenge, gbm.generate_authenticator_secret(), function (link_error, link_response, link_body) {
                             register_user(body.data);
                             res.json(body);
                         });
